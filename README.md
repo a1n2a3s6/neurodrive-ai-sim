@@ -1,8 +1,9 @@
 # NeuroDrive AI
 
-[https://img.shields.io/badge/365%20Days%20Challenge-Day%204%2F365-06B6D4?style=for-the-badge]
-[https://img.shields.io/badge/Stack-Vanilla%20JS%20%7C%20Neural%20Net%20%7C%20Canvas%20%7C%20Tailwind-10B981?style=for-the-badge]
-
+<p>
+  <img src="https://img.shields.io/badge/365%20Days%20Challenge-Day%204%2F365-06B6D4?style=for-the-badge" alt="Day 4/365" />
+  <img src="https://img.shields.io/badge/Stack-Vanilla%20JS%20%7C%20Neural%20Net%20%7C%20Canvas%20%7C%20Tailwind-10B981?style=for-the-badge" alt="Tech Stack" />
+</p>
 A **Self-Driving Car Neural Network & Genetic Algorithm Simulator** built completely from scratch in vanilla JavaScript — no external ML libraries. Watch 100 autonomous cars evolve from random crashes into smooth, high-speed racers while inspecting the winning AI's neural network firing in real time.
 
 ## Live Demo
