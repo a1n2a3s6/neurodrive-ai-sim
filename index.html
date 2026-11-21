@@ -1,0 +1,2367 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroDrive AI — Self-Driving Neural Network & Neuroevolution Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            cyber: {
+              bg: '#060a13',
+              panel: '#0b1120',
+              card: '#111a2e',
+              border: '#1e293b',
+              cyan: '#22d3ee',
+              emerald: '#10b981',
+              crimson: '#f43f5e',
+              amber: '#f59e0b',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #060a13;
+      color: #e2e8f0;
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Custom sleek range sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 9999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #22d3ee;
+      cursor: pointer;
+      border: 2px solid #060a13;
+      box-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      background: #67e8f9;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #22d3ee;
+      cursor: pointer;
+      border: 2px solid #060a13;
+      box-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
+    }
+
+    /* Custom subtle scrollbar for inspector sidebar */
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #0b1120;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+
+    /* Glassmorphic panel utility */
+    .glass-hud {
+      background: rgba(11, 17, 32, 0.78);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.18);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    }
+
+    /* Toast animation */
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .toast-enter {
+      animation: toastIn 0.22s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-cyber-bg text-slate-200 antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- Main Split-Screen Dashboard Layout -->
+  <div class="flex flex-col lg:flex-row w-full min-h-screen lg:h-screen lg:overflow-hidden">
+
+    <!-- LEFT (~68%): Main Simulation Canvas Container -->
+    <main class="relative w-full lg:w-[68%] h-[58vh] sm:h-[64vh] lg:h-full bg-[#060a13] overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-800/80 flex-shrink-0">
+      <canvas id="simCanvas" class="block w-full h-full"></canvas>
+
+      <!-- Floating Top-Left Glassmorphic Telemetry HUD -->
+      <div class="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 pointer-events-none flex flex-col gap-2 max-w-[calc(100%-1.5rem)]">
+        <div class="glass-hud rounded-xl px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Generation</div>
+            <div id="hudGen" class="font-mono text-lg sm:text-xl font-bold text-cyan-400 leading-tight">1</div>
+          </div>
+          <div class="w-px h-7 bg-slate-700/70 hidden sm:block"></div>
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Alive</div>
+            <div id="hudAlive" class="font-mono text-lg sm:text-xl font-bold text-emerald-400 leading-tight">100<span class="text-xs text-slate-400 font-normal">/100</span></div>
+          </div>
+          <div class="w-px h-7 bg-slate-700/70 hidden sm:block"></div>
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Best Fitness</div>
+            <div id="hudBestFitness" class="font-mono text-lg sm:text-xl font-bold text-amber-400 leading-tight">0</div>
+          </div>
+          <div class="w-px h-7 bg-slate-700/70 hidden sm:block"></div>
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Leader Progress</div>
+            <div id="hudLapCp" class="font-mono text-sm sm:text-base font-semibold text-slate-100 leading-tight mt-0.5">Lap 1 <span class="text-slate-500">•</span> CP 0/40</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Top-Right Speed & Record Pill -->
+      <div class="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 pointer-events-none hidden sm:flex items-center gap-2">
+        <div class="glass-hud rounded-xl px-3 py-2 flex items-center gap-2.5">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">All-Time Best</span>
+          <span id="hudAllTimeBest" class="font-mono text-sm font-bold text-cyan-300">0</span>
+        </div>
+        <div class="glass-hud rounded-xl px-3 py-2 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="hudFps" class="font-mono text-xs font-semibold text-slate-300">60 FPS</span>
+        </div>
+      </div>
+
+      <!-- Floating Bottom-Left Active Circuit & Live Leader Telemetry -->
+      <div class="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-10 pointer-events-none flex flex-wrap items-center gap-2">
+        <div class="glass-hud rounded-xl px-3.5 py-2 flex items-center gap-3">
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-cyan-400/90 font-semibold">Active Circuit</div>
+            <div id="hudTrackName" class="text-xs sm:text-sm font-bold text-white">Neon Speedway</div>
+          </div>
+          <div class="w-px h-6 bg-slate-700/80"></div>
+          <div class="flex items-center gap-2.5 font-mono text-xs">
+            <div>
+              <span class="text-slate-400 text-[10px] block">SPEED</span>
+              <span id="hudSpeed" class="text-cyan-300 font-semibold">0.0</span>
+            </div>
+            <div>
+              <span class="text-slate-400 text-[10px] block">GEN TIME</span>
+              <span id="hudGenTimer" class="text-slate-200 font-semibold">0.0s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Bottom-Right Legend -->
+      <div class="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-10 pointer-events-none hidden md:flex items-center gap-3 glass-hud rounded-xl px-3 py-1.5 text-[11px] text-slate-300">
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-cyan-400 shadow-[0_0_8px_#22d3ee]"></span>Leader</span>
+        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-indigo-400/50 border border-indigo-400/70"></span>Agents</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-emerald-400"></span>Clear</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-0.5 bg-rose-500"></span>Wall Hit</span>
+      </div>
+    </main>
+
+    <!-- RIGHT (~32%): AI Inspector & Control Sidebar -->
+    <aside class="w-full lg:w-[32%] lg:h-full bg-cyber-panel flex flex-col custom-scroll lg:overflow-y-auto">
+
+      <!-- Sidebar Header -->
+      <header class="px-4 py-3.5 border-b border-slate-800/90 flex items-center justify-between bg-[#080d1a] sticky top-0 z-20">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.35)]">
+            <svg class="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-sm sm:text-base font-extrabold tracking-tight text-white leading-none">NeuroDrive <span class="text-cyan-400">AI</span></h1>
+            <p class="text-[11px] text-slate-400 mt-0.5">Neuroevolution &amp; LiDAR Simulator</p>
+          </div>
+        </div>
+        <button id="btnPause" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5 cursor-pointer" title="Pause / Resume Simulation">
+          <span id="pauseDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="pauseLabel">Running</span>
+        </button>
+      </header>
+
+      <div class="p-4 flex flex-col gap-4">
+
+        <!-- 1. LIVE NEURAL NETWORK BRAIN VISUALIZER -->
+        <section class="bg-cyber-card/90 border border-slate-800 rounded-xl p-3 shadow-lg">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]"></span>
+              <h2 class="text-xs font-bold uppercase tracking-wider text-slate-200">Live Neural Network</h2>
+            </div>
+            <span class="font-mono text-[10px] px-2 py-0.5 rounded-md bg-slate-800/90 text-cyan-300 border border-slate-700/70">7 → 8 → 6 → 4</span>
+          </div>
+          <div class="relative w-full h-44 sm:h-48 rounded-lg bg-[#070b14] border border-slate-800/90 overflow-hidden">
+            <canvas id="brainCanvas" class="block w-full h-full"></canvas>
+          </div>
+          <div class="mt-2 flex items-center justify-between text-[10px] text-slate-400 px-0.5">
+            <div class="flex items-center gap-3">
+              <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-emerald-400 inline-block"></span>+Weight</span>
+              <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-rose-500 inline-block"></span>-Weight</span>
+            </div>
+            <span class="font-mono text-slate-500">Hidden: tanh • Out: σ</span>
+          </div>
+        </section>
+
+        <!-- 2. FITNESS EVOLUTION CHART -->
+        <section class="bg-cyber-card/90 border border-slate-800 rounded-xl p-3 shadow-lg">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b]"></span>
+              <h2 class="text-xs font-bold uppercase tracking-wider text-slate-200">Fitness Evolution</h2>
+            </div>
+            <div class="flex items-center gap-3 text-[10px] font-medium">
+              <span class="flex items-center gap-1 text-cyan-300"><span class="w-2 h-2 rounded-full bg-cyan-400"></span>Best</span>
+              <span class="flex items-center gap-1 text-amber-300"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Avg</span>
+            </div>
+          </div>
+          <div class="relative w-full h-36 sm:h-40 rounded-lg bg-[#070b14] border border-slate-800/90 overflow-hidden">
+            <canvas id="chartCanvas" class="block w-full h-full"></canvas>
+          </div>
+        </section>
+
+        <!-- 3. SIMULATION CONTROLS -->
+        <section class="bg-cyber-card/90 border border-slate-800 rounded-xl p-3.5 shadow-lg flex flex-col gap-3.5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-200">Training Controls</h2>
+            <span class="text-[10px] font-mono text-slate-400">Fixed-Step Physics</span>
+          </div>
+
+          <!-- Track Selector -->
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Race Circuit</label>
+            <div id="trackButtons" class="grid grid-cols-2 gap-1.5">
+              <button data-track="0" class="track-btn px-2.5 py-2 rounded-lg text-left text-xs font-semibold border transition cursor-pointer">
+                <div class="truncate">Neon Speedway</div>
+                <div class="text-[10px] opacity-70 font-normal">Beginner Oval</div>
+              </button>
+              <button data-track="1" class="track-btn px-2.5 py-2 rounded-lg text-left text-xs font-semibold border transition cursor-pointer">
+                <div class="truncate">Tokyo Hairpin GP</div>
+                <div class="text-[10px] opacity-70 font-normal">Technical Corners</div>
+              </button>
+              <button data-track="2" class="track-btn px-2.5 py-2 rounded-lg text-left text-xs font-semibold border transition cursor-pointer">
+                <div class="truncate">Cyber S-Curves</div>
+                <div class="text-[10px] opacity-70 font-normal">Rapid Chicanes</div>
+              </button>
+              <button data-track="3" class="track-btn px-2.5 py-2 rounded-lg text-left text-xs font-semibold border transition cursor-pointer">
+                <div class="truncate">Apex Pro Circuit</div>
+                <div class="text-[10px] opacity-70 font-normal">High-Speed Pro</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Simulation Speed Multiplier -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-[11px] font-semibold text-slate-400">Simulation Speed</label>
+              <span id="speedBadge" class="font-mono text-[11px] font-semibold text-cyan-400">1x Realtime</span>
+            </div>
+            <div id="speedButtons" class="grid grid-cols-4 gap-1.5">
+              <button data-speed="1" class="speed-btn py-1.5 rounded-lg font-mono text-xs font-bold border transition cursor-pointer">1x</button>
+              <button data-speed="2" class="speed-btn py-1.5 rounded-lg font-mono text-xs font-bold border transition cursor-pointer">2x</button>
+              <button data-speed="5" class="speed-btn py-1.5 rounded-lg font-mono text-xs font-bold border transition cursor-pointer">5x</button>
+              <button data-speed="10" class="speed-btn py-1.5 rounded-lg font-mono text-xs font-bold border transition cursor-pointer">10x</button>
+            </div>
+          </div>
+
+          <!-- Sliders: Population Size & Mutation Rate -->
+          <div class="grid grid-cols-1 gap-3 pt-0.5">
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1.5">
+                <label for="sliderPop" class="font-semibold text-slate-300">Population Size</label>
+                <span id="valPop" class="font-mono font-bold text-cyan-300 bg-slate-800/90 px-2 py-0.5 rounded-md text-[11px]">100 cars</span>
+              </div>
+              <input id="sliderPop" type="range" min="30" max="200" step="10" value="100" />
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1.5">
+                <label for="sliderMut" class="font-semibold text-slate-300">Mutation Rate</label>
+                <span id="valMut" class="font-mono font-bold text-amber-300 bg-slate-800/90 px-2 py-0.5 rounded-md text-[11px]">10%</span>
+              </div>
+              <input id="sliderMut" type="range" min="1" max="40" step="1" value="10" />
+            </div>
+          </div>
+
+          <!-- Visual Toggles -->
+          <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+              <input id="toggleRays" type="checkbox" checked class="sr-only peer" />
+              <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:bg-cyan-500 relative transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+              <span class="text-xs font-medium text-slate-300">LiDAR Rays</span>
+            </label>
+
+            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+              <input id="toggleCheckpoints" type="checkbox" checked class="sr-only peer" />
+              <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:bg-cyan-500 relative transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4"></div>
+              <span class="text-xs font-medium text-slate-300">Checkpoints</span>
+            </label>
+          </div>
+
+          <!-- Evolution Action Buttons -->
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button id="btnNextGen" class="py-2.5 px-3 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-[0_0_16px_rgba(34,211,238,0.28)] transition active:scale-[0.98] cursor-pointer">
+              Next Generation →
+            </button>
+            <button id="btnReset" class="py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-800 hover:bg-rose-950/70 text-rose-300 border border-slate-700 hover:border-rose-500/50 transition active:scale-[0.98] cursor-pointer">
+              Reset Evolution
+            </button>
+          </div>
+
+          <!-- Save / Load / Export / Import Best Brain -->
+          <div class="pt-2.5 border-t border-slate-800/80">
+            <div class="text-[11px] font-semibold text-slate-400 mb-2">Best Brain Persistence</div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button id="btnQuickSave" class="py-2 px-2.5 rounded-lg text-[11px] font-semibold bg-slate-800/90 hover:bg-slate-700 text-emerald-300 border border-slate-700/80 transition cursor-pointer">
+                Save (Browser)
+              </button>
+              <button id="btnQuickLoad" class="py-2 px-2.5 rounded-lg text-[11px] font-semibold bg-slate-800/90 hover:bg-slate-700 text-cyan-300 border border-slate-700/80 transition cursor-pointer">
+                Load (Browser)
+              </button>
+              <button id="btnExportJson" class="py-2 px-2.5 rounded-lg text-[11px] font-semibold bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition cursor-pointer">
+                Export JSON ↓
+              </button>
+              <button id="btnImportJson" class="py-2 px-2.5 rounded-lg text-[11px] font-semibold bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition cursor-pointer">
+                Import JSON ↑
+              </button>
+            </div>
+            <input id="fileImportJson" type="file" accept=".json,application/json" class="hidden" />
+          </div>
+        </section>
+
+      </div>
+    </aside>
+  </div>
+
+  <!-- Toast Notification Container (No alert() used anywhere) -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      /* =========================================================================
+       * 1. UTILITIES & MATH HELPERS
+       * ========================================================================= */
+
+      /**
+       * Generates a standard normal (Gaussian) random number with mean 0, std 1
+       * using the Box-Muller transform.
+       */
+      function randomGaussian() {
+        let u1 = 0, u2 = 0;
+        while (u1 === 0) u1 = Math.random();
+        while (u2 === 0) u2 = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+      }
+
+      /**
+       * Clamps a numeric value between min and max.
+       */
+      function clamp(val, min, max) {
+        return val < min ? min : (val > max ? max : val);
+      }
+
+      /**
+       * Exact 2D line segment intersection test between segment AB and segment CD.
+       * Returns { x, y, t } where t in [0, 1] is the fraction along AB, or null if no hit.
+       */
+      function getSegmentIntersection(ax, ay, bx, by, cx, cy, dx, dy) {
+        const rx = bx - ax;
+        const ry = by - ay;
+        const sx = dx - cx;
+        const sy = dy - cy;
+
+        const denom = rx * sy - ry * sx;
+        if (Math.abs(denom) < 1e-9) return null;
+
+        const qpx = cx - ax;
+        const qpy = cy - ay;
+
+        const t = (qpx * sy - qpy * sx) / denom;
+        if (t < 0 || t > 1) return null;
+
+        const u = (qpx * ry - qpy * rx) / denom;
+        if (u < 0 || u > 1) return null;
+
+        return {
+          x: ax + t * rx,
+          y: ay + t * ry,
+          t
+        };
+      }
+
+      /**
+       * Boolean-only fast 2D segment intersection check (zero heap allocation).
+       */
+      function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+        const rx = bx - ax;
+        const ry = by - ay;
+        const sx = dx - cx;
+        const sy = dy - cy;
+        const denom = rx * sy - ry * sx;
+        if (Math.abs(denom) < 1e-9) return false;
+        const qpx = cx - ax;
+        const qpy = cy - ay;
+        const t = (qpx * sy - qpy * sx) / denom;
+        if (t < 0 || t > 1) return false;
+        const u = (qpx * ry - qpy * rx) / denom;
+        return u >= 0 && u <= 1;
+      }
+
+      /**
+       * Displays a sleek non-blocking toast notification.
+       */
+      function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        const colors = {
+          info: 'border-cyan-500/50 text-cyan-100 bg-slate-900/95',
+          success: 'border-emerald-500/50 text-emerald-100 bg-slate-900/95',
+          warning: 'border-amber-500/50 text-amber-100 bg-slate-900/95',
+          error: 'border-rose-500/50 text-rose-100 bg-slate-900/95',
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `toast-enter pointer-events-auto px-4 py-2.5 rounded-xl border text-xs font-semibold shadow-2xl backdrop-blur-md ${colors[type] || colors.info}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(8px)';
+          setTimeout(() => toast.remove(), 260);
+        }, 2800);
+      }
+
+      /* =========================================================================
+       * 2. FEEDFORWARD NEURAL NETWORK (100% FROM SCRATCH)
+       *    Topology: 7 Inputs -> 8 Hidden (tanh) -> 6 Hidden (tanh) -> 4 Outputs (sigmoid)
+       * ========================================================================= */
+
+      class NeuralNetwork {
+        /**
+         * @param {number[]} layerSizes - e.g. [7, 8, 6, 4]
+         */
+        constructor(layerSizes = [7, 8, 6, 4]) {
+          this.layerSizes = [...layerSizes];
+          this.weights = []; // weights[l] is matrix [outSize][inSize]
+          this.biases = [];  // biases[l] is vector [outSize]
+          this.activations = layerSizes.map(size => new Float32Array(size));
+
+          for (let l = 0; l < layerSizes.length - 1; l++) {
+            const inCount = layerSizes[l];
+            const outCount = layerSizes[l + 1];
+            // Xavier/Glorot scale for well-conditioned initial activations
+            const scale = Math.sqrt(2.0 / (inCount + outCount));
+
+            const wMatrix = [];
+            const bVec = new Float32Array(outCount);
+
+            for (let o = 0; o < outCount; o++) {
+              const row = new Float32Array(inCount);
+              for (let i = 0; i < inCount; i++) {
+                row[i] = randomGaussian() * scale;
+              }
+              wMatrix.push(row);
+              bVec[o] = randomGaussian() * 0.25;
+            }
+
+            this.weights.push(wMatrix);
+            this.biases.push(bVec);
+          }
+        }
+
+        /**
+         * Forward pass through all layers.
+         * @param {number[]|Float32Array} inputs - 7 normalized LiDAR readings in [0, 1]
+         * @returns {Float32Array} 4 output activations in [0, 1]: [GAS, BRK, LFT, RGT]
+         */
+        forward(inputs) {
+          const inputLayer = this.activations[0];
+          for (let i = 0; i < inputLayer.length; i++) {
+            inputLayer[i] = inputs[i];
+          }
+
+          const numTransitions = this.weights.length;
+          for (let l = 0; l < numTransitions; l++) {
+            const prev = this.activations[l];
+            const curr = this.activations[l + 1];
+            const wMat = this.weights[l];
+            const bVec = this.biases[l];
+            const isOutputLayer = (l === numTransitions - 1);
+
+            for (let o = 0; o < curr.length; o++) {
+              let sum = bVec[o];
+              const row = wMat[o];
+              for (let i = 0; i < prev.length; i++) {
+                sum += row[i] * prev[i];
+              }
+              // Hidden layers use tanh; output layer uses sigmoid [0, 1]
+              if (isOutputLayer) {
+                curr[o] = 1.0 / (1.0 + Math.exp(-clamp(sum, -15, 15)));
+              } else {
+                curr[o] = Math.tanh(sum);
+              }
+            }
+          }
+
+          return this.activations[numTransitions];
+        }
+
+        /**
+         * Deep clones weights and biases into a new NeuralNetwork instance.
+         */
+        clone() {
+          const copy = new NeuralNetwork(this.layerSizes);
+          for (let l = 0; l < this.weights.length; l++) {
+            for (let o = 0; o < this.weights[l].length; o++) {
+              copy.weights[l][o].set(this.weights[l][o]);
+            }
+            copy.biases[l].set(this.biases[l]);
+          }
+          return copy;
+        }
+
+        /**
+         * Uniform + blend crossover between two parent networks.
+         */
+        static crossover(parentA, parentB) {
+          const child = new NeuralNetwork(parentA.layerSizes);
+          for (let l = 0; l < child.weights.length; l++) {
+            for (let o = 0; o < child.weights[l].length; o++) {
+              const rowA = parentA.weights[l][o];
+              const rowB = parentB.weights[l][o];
+              const rowC = child.weights[l][o];
+              for (let i = 0; i < rowC.length; i++) {
+                const r = Math.random();
+                if (r < 0.45) {
+                  rowC[i] = rowA[i];
+                } else if (r < 0.90) {
+                  rowC[i] = rowB[i];
+                } else {
+                  // Subtle arithmetic blend for smoother parameter exploration
+                  const alpha = Math.random();
+                  rowC[i] = rowA[i] * alpha + rowB[i] * (1 - alpha);
+                }
+              }
+            }
+            const bA = parentA.biases[l];
+            const bB = parentB.biases[l];
+            const bC = child.biases[l];
+            for (let o = 0; o < bC.length; o++) {
+              bC[o] = Math.random() < 0.5 ? bA[o] : bB[o];
+            }
+          }
+          return child;
+        }
+
+        /**
+         * Applies Gaussian perturbation to weights and biases at the given mutation rate.
+         * @param {number} rate - Probability [0..1] per weight/bias
+         * @param {number} strength - Standard deviation of Gaussian noise
+         */
+        mutate(rate = 0.1, strength = 0.35) {
+          for (let l = 0; l < this.weights.length; l++) {
+            for (let o = 0; o < this.weights[l].length; o++) {
+              const row = this.weights[l][o];
+              for (let i = 0; i < row.length; i++) {
+                if (Math.random() < rate) {
+                  row[i] = clamp(row[i] + randomGaussian() * strength, -5, 5);
+                }
+              }
+            }
+            const bVec = this.biases[l];
+            for (let o = 0; o < bVec.length; o++) {
+              if (Math.random() < rate) {
+                bVec[o] = clamp(bVec[o] + randomGaussian() * strength, -5, 5);
+              }
+            }
+          }
+        }
+
+        /**
+         * Serializes network topology, weights, and biases to a plain JSON-friendly object.
+         */
+        toJSON() {
+          return {
+            format: 'NeuroDriveAI-Brain-v1',
+            layerSizes: this.layerSizes,
+            weights: this.weights.map(mat => mat.map(row => Array.from(row))),
+            biases: this.biases.map(vec => Array.from(vec)),
+          };
+        }
+
+        /**
+         * Reconstructs a validated NeuralNetwork from parsed JSON data.
+         */
+        static fromJSON(data) {
+          if (!data || !Array.isArray(data.layerSizes) || !Array.isArray(data.weights) || !Array.isArray(data.biases)) {
+            throw new Error('Invalid brain JSON structure.');
+          }
+          if (data.layerSizes.length !== 4 || data.layerSizes[0] !== 7 || data.layerSizes[3] !== 4) {
+            throw new Error('Incompatible network topology. Expected [7, 8, 6, 4].');
+          }
+          const nn = new NeuralNetwork(data.layerSizes);
+          for (let l = 0; l < nn.weights.length; l++) {
+            if (!data.weights[l] || data.weights[l].length !== nn.weights[l].length) {
+              throw new Error(`Weight layer ${l} dimension mismatch.`);
+            }
+            for (let o = 0; o < nn.weights[l].length; o++) {
+              const srcRow = data.weights[l][o];
+              if (!Array.isArray(srcRow) || srcRow.length !== nn.weights[l][o].length) {
+                throw new Error(`Weight row ${l}:${o} dimension mismatch.`);
+              }
+              for (let i = 0; i < srcRow.length; i++) {
+                nn.weights[l][o][i] = Number(srcRow[i]) || 0;
+              }
+            }
+            const srcBias = data.biases[l];
+            if (!Array.isArray(srcBias) || srcBias.length !== nn.biases[l].length) {
+              throw new Error(`Bias layer ${l} dimension mismatch.`);
+            }
+            for (let o = 0; o < srcBias.length; o++) {
+              nn.biases[l][o] = Number(srcBias[o]) || 0;
+            }
+          }
+          return nn;
+        }
+      }
+
+      /* =========================================================================
+       * 3. TRACK GEOMETRY, CATMULL-ROM SPLINES & SPATIAL HASH GRID
+       * ========================================================================= */
+
+      const TRACK_PRESETS = [
+        {
+          name: 'Neon Speedway',
+          subtitle: 'Beginner Oval',
+          halfWidth: 58,
+          samplesPerSegment: 10,
+          controlPoints: [
+            { x: 340, y: 165 },
+            { x: 600, y: 150 },
+            { x: 860, y: 165 },
+            { x: 1030, y: 265 },
+            { x: 1055, y: 425 },
+            { x: 965, y: 585 },
+            { x: 790, y: 645 },
+            { x: 600, y: 600 },
+            { x: 410, y: 645 },
+            { x: 230, y: 585 },
+            { x: 145, y: 425 },
+            { x: 170, y: 265 },
+          ]
+        },
+        {
+          name: 'Tokyo Hairpin GP',
+          subtitle: 'Tight Technical Corners',
+          halfWidth: 48,
+          samplesPerSegment: 9,
+          controlPoints: [
+            { x: 280, y: 145 },
+            { x: 610, y: 135 },
+            { x: 930, y: 155 },
+            { x: 1065, y: 245 },
+            { x: 1035, y: 365 },
+            { x: 865, y: 395 },
+            { x: 705, y: 430 },
+            { x: 690, y: 520 },
+            { x: 800, y: 575 },
+            { x: 970, y: 615 },
+            { x: 925, y: 710 },
+            { x: 660, y: 700 },
+            { x: 340, y: 685 },
+            { x: 145, y: 600 },
+            { x: 165, y: 470 },
+            { x: 350, y: 425 },
+            { x: 370, y: 325 },
+            { x: 185, y: 260 },
+          ]
+        },
+        {
+          name: 'Cyber S-Curves',
+          subtitle: 'Rapid Chicane Switches',
+          halfWidth: 48,
+          samplesPerSegment: 10,
+          controlPoints: [
+            { x: 225, y: 220 },
+            { x: 420, y: 130 },
+            { x: 600, y: 265 },
+            { x: 780, y: 130 },
+            { x: 975, y: 220 },
+            { x: 1065, y: 400 },
+            { x: 975, y: 580 },
+            { x: 780, y: 670 },
+            { x: 600, y: 535 },
+            { x: 420, y: 670 },
+            { x: 225, y: 580 },
+            { x: 135, y: 400 },
+          ]
+        },
+        {
+          name: 'Apex Pro Circuit',
+          subtitle: 'Complex High-Speed Track',
+          halfWidth: 46,
+          samplesPerSegment: 9,
+          controlPoints: [
+            { x: 270, y: 145 },
+            { x: 640, y: 135 },
+            { x: 965, y: 155 },
+            { x: 1075, y: 265 },
+            { x: 995, y: 380 },
+            { x: 825, y: 355 },
+            { x: 685, y: 440 },
+            { x: 765, y: 550 },
+            { x: 965, y: 605 },
+            { x: 920, y: 710 },
+            { x: 665, y: 700 },
+            { x: 515, y: 585 },
+            { x: 365, y: 685 },
+            { x: 185, y: 635 },
+            { x: 135, y: 490 },
+            { x: 270, y: 405 },
+            { x: 200, y: 275 },
+          ]
+        }
+      ];
+
+      class RaceTrack {
+        constructor(preset) {
+          this.name = preset.name;
+          this.subtitle = preset.subtitle;
+          this.halfWidth = preset.halfWidth;
+          this.centerline = [];
+          this.outerPoints = [];
+          this.innerPoints = [];
+          this.wallSegments = [];
+          this.checkpoints = [];
+          this.bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+
+          // Spatial hash grid for ultra-fast raycasting & collision detection
+          this.cellSize = 110;
+          this.grid = new Map();
+          this.segmentVisitedStamp = null;
+          this.currentStamp = 0;
+
+          this._buildGeometry(preset.controlPoints, preset.samplesPerSegment);
+          this._buildSpatialGrid();
+        }
+
+        /**
+         * Evaluates a closed centripetal/uniform Catmull-Rom spline and offsets into
+         * smooth, non-self-intersecting outer and inner polygons + sequential checkpoints.
+         */
+        _buildGeometry(pts, samplesPerSeg) {
+          const n = pts.length;
+          const rawCenter = [];
+
+          for (let i = 0; i < n; i++) {
+            const p0 = pts[(i - 1 + n) % n];
+            const p1 = pts[i];
+            const p2 = pts[(i + 1) % n];
+            const p3 = pts[(i + 2) % n];
+
+            for (let s = 0; s < samplesPerSeg; s++) {
+              const t = s / samplesPerSeg;
+              const t2 = t * t;
+              const t3 = t2 * t;
+
+              const x = 0.5 * (
+                (2 * p1.x) +
+                (-p0.x + p2.x) * t +
+                (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+                (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3
+              );
+              const y = 0.5 * (
+                (2 * p1.y) +
+                (-p0.y + p2.y) * t +
+                (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+                (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3
+              );
+              rawCenter.push({ x, y });
+            }
+          }
+
+          this.centerline = rawCenter;
+          const total = rawCenter.length;
+
+          // Compute smoothed outward/inward normals to guarantee crisp, pinch-free walls
+          const normals = [];
+          for (let i = 0; i < total; i++) {
+            const prev = rawCenter[(i - 1 + total) % total];
+            const next = rawCenter[(i + 1) % total];
+            const tx = next.x - prev.x;
+            const ty = next.y - prev.y;
+            const len = Math.hypot(tx, ty) || 1;
+            // For clockwise loop in screen coords (+Y down), (-ty, tx) points inward, (ty, -tx) points outward
+            normals.push({ x: ty / len, y: -tx / len });
+          }
+
+          // Light Laplacian smoothing on normals to prevent sharp corner folds
+          const smoothNormals = normals.map((_, i) => {
+            const nPrev = normals[(i - 1 + total) % total];
+            const nCurr = normals[i];
+            const nNext = normals[(i + 1) % total];
+            const nx = nPrev.x * 0.25 + nCurr.x * 0.5 + nNext.x * 0.25;
+            const ny = nPrev.y * 0.25 + nCurr.y * 0.5 + nNext.y * 0.25;
+            const len = Math.hypot(nx, ny) || 1;
+            return { x: nx / len, y: ny / len };
+          });
+
+          const hw = this.halfWidth;
+          for (let i = 0; i < total; i++) {
+            const c = rawCenter[i];
+            const nm = smoothNormals[i];
+            const ox = c.x + nm.x * hw;
+            const oy = c.y + nm.y * hw;
+            const ix = c.x - nm.x * hw;
+            const iy = c.y - nm.y * hw;
+
+            this.outerPoints.push({ x: ox, y: oy });
+            this.innerPoints.push({ x: ix, y: iy });
+
+            this.bounds.minX = Math.min(this.bounds.minX, ox, ix);
+            this.bounds.maxX = Math.max(this.bounds.maxX, ox, ix);
+            this.bounds.minY = Math.min(this.bounds.minY, oy, iy);
+            this.bounds.maxY = Math.max(this.bounds.maxY, oy, iy);
+          }
+
+          // Build wall segments (outer loop + inner loop)
+          let segId = 0;
+          for (let i = 0; i < total; i++) {
+            const j = (i + 1) % total;
+            const o1 = this.outerPoints[i], o2 = this.outerPoints[j];
+            this.wallSegments.push({
+              id: segId++,
+              x1: o1.x, y1: o1.y, x2: o2.x, y2: o2.y,
+              minX: Math.min(o1.x, o2.x), maxX: Math.max(o1.x, o2.x),
+              minY: Math.min(o1.y, o2.y), maxY: Math.max(o1.y, o2.y),
+            });
+
+            const in1 = this.innerPoints[i], in2 = this.innerPoints[j];
+            this.wallSegments.push({
+              id: segId++,
+              x1: in1.x, y1: in1.y, x2: in2.x, y2: in2.y,
+              minX: Math.min(in1.x, in2.x), maxX: Math.max(in1.x, in2.x),
+              minY: Math.min(in1.y, in2.y), maxY: Math.max(in1.y, in2.y),
+            });
+          }
+
+          // Build sequential checkpoint gates spanning inner-to-outer wall (~40-48 gates)
+          const cpStep = Math.max(2, Math.floor(total / 42));
+          for (let i = 0; i < total; i += cpStep) {
+            const o = this.outerPoints[i];
+            const inn = this.innerPoints[i];
+            const c = this.centerline[i];
+            this.checkpoints.push({
+              x1: inn.x, y1: inn.y,
+              x2: o.x, y2: o.y,
+              cx: c.x, cy: c.y,
+            });
+          }
+
+          // Spawn configuration: cleanly centered at checkpoint 0, aimed accurately toward checkpoint 1
+          const start = this.centerline[0];
+          const lookAhead = this.centerline[2];
+          this.spawn = {
+            x: start.x,
+            y: start.y,
+            angle: Math.atan2(lookAhead.y - start.y, lookAhead.x - start.x),
+          };
+        }
+
+        /**
+         * Populates a uniform spatial hash grid with all wall segments for O(local) queries.
+         */
+        _buildSpatialGrid() {
+          const cs = this.cellSize;
+          this.grid.clear();
+          this.segmentVisitedStamp = new Int32Array(this.wallSegments.length);
+
+          for (let i = 0; i < this.wallSegments.length; i++) {
+            const seg = this.wallSegments[i];
+            const minCx = Math.floor(seg.minX / cs);
+            const maxCx = Math.floor(seg.maxX / cs);
+            const minCy = Math.floor(seg.minY / cs);
+            const maxCy = Math.floor(seg.maxY / cs);
+
+            for (let cx = minCx; cx <= maxCx; cx++) {
+              for (let cy = minCy; cy <= maxCy; cy++) {
+                const key = (cx + 1000) * 2000 + (cy + 1000);
+                let bucket = this.grid.get(key);
+                if (!bucket) {
+                  bucket = [];
+                  this.grid.set(key, bucket);
+                }
+                bucket.push(seg);
+              }
+            }
+          }
+        }
+
+        /**
+         * Casts a single ray from (x1, y1) to (x2, y2) and returns the closest hit { x, y, t }
+         * or null if completely clear.
+         */
+        castRay(x1, y1, x2, y2) {
+          const cs = this.cellSize;
+          const minX = x1 < x2 ? x1 : x2;
+          const maxX = x1 > x2 ? x1 : x2;
+          const minY = y1 < y2 ? y1 : y2;
+          const maxY = y1 > y2 ? y1 : y2;
+
+          const minCx = Math.floor(minX / cs);
+          const maxCx = Math.floor(maxX / cs);
+          const minCy = Math.floor(minY / cs);
+          const maxCy = Math.floor(maxY / cs);
+
+          const stamp = ++this.currentStamp;
+          const visited = this.segmentVisitedStamp;
+
+          let bestT = 2.0;
+          let hitX = x2;
+          let hitY = y2;
+          let found = false;
+
+          for (let cx = minCx; cx <= maxCx; cx++) {
+            for (let cy = minCy; cy <= maxCy; cy++) {
+              const bucket = this.grid.get((cx + 1000) * 2000 + (cy + 1000));
+              if (!bucket) continue;
+
+              for (let k = 0; k < bucket.length; k++) {
+                const seg = bucket[k];
+                if (visited[seg.id] === stamp) continue;
+                visited[seg.id] = stamp;
+
+                // Fast AABB rejection
+                if (seg.maxX < minX || seg.minX > maxX || seg.maxY < minY || seg.minY > maxY) {
+                  continue;
+                }
+
+                const hit = getSegmentIntersection(x1, y1, x2, y2, seg.x1, seg.y1, seg.x2, seg.y2);
+                if (hit && hit.t < bestT) {
+                  bestT = hit.t;
+                  hitX = hit.x;
+                  hitY = hit.y;
+                  found = true;
+                }
+              }
+            }
+          }
+
+          return found ? { x: hitX, y: hitY, t: bestT } : null;
+        }
+
+        /**
+         * Checks exact polygon-to-segment collision between a car's 4-vertex OBB and track walls.
+         */
+        checkPolygonCollision(poly) {
+          const cs = this.cellSize;
+          let minX = poly[0].x, maxX = poly[0].x;
+          let minY = poly[0].y, maxY = poly[0].y;
+          for (let i = 1; i < 4; i++) {
+            if (poly[i].x < minX) minX = poly[i].x;
+            if (poly[i].x > maxX) maxX = poly[i].x;
+            if (poly[i].y < minY) minY = poly[i].y;
+            if (poly[i].y > maxY) maxY = poly[i].y;
+          }
+
+          const minCx = Math.floor(minX / cs);
+          const maxCx = Math.floor(maxX / cs);
+          const minCy = Math.floor(minY / cs);
+          const maxCy = Math.floor(maxY / cs);
+
+          const stamp = ++this.currentStamp;
+          const visited = this.segmentVisitedStamp;
+
+          for (let cx = minCx; cx <= maxCx; cx++) {
+            for (let cy = minCy; cy <= maxCy; cy++) {
+              const bucket = this.grid.get((cx + 1000) * 2000 + (cy + 1000));
+              if (!bucket) continue;
+
+              for (let k = 0; k < bucket.length; k++) {
+                const seg = bucket[k];
+                if (visited[seg.id] === stamp) continue;
+                visited[seg.id] = stamp;
+
+                if (seg.maxX < minX || seg.minX > maxX || seg.maxY < minY || seg.minY > maxY) {
+                  continue;
+                }
+
+                // Check all 4 car OBB edges against this wall segment
+                for (let e = 0; e < 4; e++) {
+                  const p1 = poly[e];
+                  const p2 = poly[(e + 1) & 3];
+                  if (segmentsIntersect(p1.x, p1.y, p2.x, p2.y, seg.x1, seg.y1, seg.x2, seg.y2)) {
+                    return true;
+                  }
+                }
+              }
+            }
+          }
+          return false;
+        }
+      }
+
+      /* =========================================================================
+       * 4. AUTONOMOUS CAR AGENT (PHYSICS + 7-RAY LIDAR + FITNESS TRACKING)
+       * ========================================================================= */
+
+      const LIDAR_ANGLES = [
+        -75 * Math.PI / 180,
+        -50 * Math.PI / 180,
+        -25 * Math.PI / 180,
+        0,
+        25 * Math.PI / 180,
+        50 * Math.PI / 180,
+        75 * Math.PI / 180,
+      ];
+      const LIDAR_RANGE = 230;
+      const CAR_LENGTH = 24;
+      const CAR_WIDTH = 12;
+
+      class Car {
+        constructor(spawn, brain = null, isElite = false) {
+          this.x = spawn.x;
+          this.y = spawn.y;
+          this.prevX = spawn.x;
+          this.prevY = spawn.y;
+          this.angle = spawn.angle;
+          this.speed = 0;
+          this.maxSpeed = 5.6;
+
+          this.brain = brain || new NeuralNetwork([7, 8, 6, 4]);
+          this.isElite = isElite;
+
+          this.alive = true;
+          this.crashFade = 1.0; // Fades smoothly from 1 -> 0 after crashing
+          this.braking = false;
+
+          // Checkpoint & fitness tracking
+          this.nextCheckpoint = 1;
+          this.checkpointsPassed = 0;
+          this.laps = 0;
+          this.distanceTraveled = 0;
+          this.fitness = 0;
+          this.initialDistToNextCp = 1;
+
+          // Stall / inactivity timers
+          this.framesSinceCheckpoint = 0;
+          this.lowSpeedFrames = 0;
+          this.age = 0;
+
+          // Pre-allocated buffers to keep GC near zero at 10x speed
+          this.sensorReadings = new Float32Array(7);
+          this.rays = LIDAR_ANGLES.map(() => ({ x1: 0, y1: 0, x2: 0, y2: 0, hit: false }));
+          this.polygon = [
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+            { x: 0, y: 0 },
+          ];
+        }
+
+        /**
+         * Initializes distance reference to the first checkpoint.
+         */
+        initForTrack(track) {
+          const cp = track.checkpoints[this.nextCheckpoint];
+          this.initialDistToNextCp = Math.hypot(cp.cx - this.x, cp.cy - this.y) || 1;
+          this._updatePolygon();
+        }
+
+        /**
+         * Computes the 4 world-space vertices of the car's oriented bounding box.
+         */
+        _updatePolygon() {
+          const cos = Math.cos(this.angle);
+          const sin = Math.sin(this.angle);
+          const hl = CAR_LENGTH * 0.5;
+          const hw = CAR_WIDTH * 0.5;
+
+          const fx = cos * hl;
+          const fy = sin * hl;
+          const rx = -sin * hw;
+          const ry = cos * hw;
+
+          // Front-Right, Front-Left, Rear-Left, Rear-Right
+          this.polygon[0].x = this.x + fx + rx;
+          this.polygon[0].y = this.y + fy + ry;
+          this.polygon[1].x = this.x + fx - rx;
+          this.polygon[1].y = this.y + fy - ry;
+          this.polygon[2].x = this.x - fx - rx;
+          this.polygon[2].y = this.y - fy - ry;
+          this.polygon[3].x = this.x - fx + rx;
+          this.polygon[3].y = this.y - fy + ry;
+        }
+
+        /**
+         * Casts all 7 forward-facing LiDAR rays against track walls.
+         */
+        updateSensors(track) {
+          for (let i = 0; i < 7; i++) {
+            const rayAngle = this.angle + LIDAR_ANGLES[i];
+            const endX = this.x + Math.cos(rayAngle) * LIDAR_RANGE;
+            const endY = this.y + Math.sin(rayAngle) * LIDAR_RANGE;
+
+            const hit = track.castRay(this.x, this.y, endX, endY);
+            const ray = this.rays[i];
+            ray.x1 = this.x;
+            ray.y1 = this.y;
+
+            if (hit) {
+              ray.x2 = hit.x;
+              ray.y2 = hit.y;
+              ray.hit = true;
+              // Normalized distance: 0 = touching wall, 1 = max clear range
+              this.sensorReadings[i] = hit.t;
+            } else {
+              ray.x2 = endX;
+              ray.y2 = endY;
+              ray.hit = false;
+              this.sensorReadings[i] = 1.0;
+            }
+          }
+        }
+
+        /**
+         * Advances car physics, neural network inference, checkpoint progression,
+         * wall collision, and inactivity checks by one fixed tick.
+         */
+        update(track) {
+          if (!this.alive) {
+            if (this.crashFade > 0) {
+              this.crashFade = Math.max(0, this.crashFade - 0.018);
+            }
+            return;
+          }
+
+          this.age++;
+          this.framesSinceCheckpoint++;
+
+          // 1. Cast LiDAR rays & feed normalized distances into the neural network
+          this.updateSensors(track);
+          const outputs = this.brain.forward(this.sensorReadings);
+          const gas = outputs[0];
+          const brake = outputs[1];
+          const steerLeft = outputs[2];
+          const steerRight = outputs[3];
+
+          this.braking = brake > 0.55 && brake > gas;
+
+          // 2. Arcade-realistic 2D car physics
+          const accel = gas * 0.25;
+          const decel = brake * 0.30;
+          this.speed += accel - decel;
+          this.speed *= 0.974; // Smooth rolling resistance / drag
+          this.speed = clamp(this.speed, 0, this.maxSpeed);
+
+          // Steering scales smoothly with speed (cannot pivot in place when stopped)
+          const steerInput = steerRight - steerLeft;
+          const steerFactor = Math.min(1.0, this.speed / 1.35);
+          this.angle += steerInput * 0.072 * steerFactor;
+
+          this.prevX = this.x;
+          this.prevY = this.y;
+          this.x += Math.cos(this.angle) * this.speed;
+          this.y += Math.sin(this.angle) * this.speed;
+          this.distanceTraveled += this.speed;
+
+          // 3. Exact OBB polygon-to-wall collision detection
+          this._updatePolygon();
+          if (track.checkPolygonCollision(this.polygon)) {
+            this.alive = false;
+            this._computeFitness(track);
+            return;
+          }
+
+          // 4. Sequential checkpoint crossing check
+          const cp = track.checkpoints[this.nextCheckpoint];
+          const crossed =
+            segmentsIntersect(this.prevX, this.prevY, this.x, this.y, cp.x1, cp.y1, cp.x2, cp.y2) ||
+            segmentsIntersect(this.polygon[0].x, this.polygon[0].y, this.polygon[2].x, this.polygon[2].y, cp.x1, cp.y1, cp.x2, cp.y2);
+
+          if (crossed) {
+            this.checkpointsPassed++;
+            this.framesSinceCheckpoint = 0;
+            this.nextCheckpoint = (this.nextCheckpoint + 1) % track.checkpoints.length;
+
+            // Completed a full lap upon passing checkpoint 0 again
+            if (this.nextCheckpoint === 1 && this.checkpointsPassed >= track.checkpoints.length) {
+              this.laps++;
+            }
+
+            const newCp = track.checkpoints[this.nextCheckpoint];
+            this.initialDistToNextCp = Math.hypot(newCp.cx - this.x, newCp.cy - this.y) || 1;
+          }
+
+          // 5. Inactivity & stall elimination (prevents circling or stopping)
+          if (this.speed < 0.35) {
+            this.lowSpeedFrames++;
+          } else {
+            this.lowSpeedFrames = Math.max(0, this.lowSpeedFrames - 2);
+          }
+
+          if (this.lowSpeedFrames > 65 || this.framesSinceCheckpoint > 250) {
+            this.alive = false;
+          }
+
+          this._computeFitness(track);
+        }
+
+        /**
+         * Computes continuous fitness combining sequential checkpoints, smooth fractional
+         * progress to the next gate, lap bonuses, and distance traveled.
+         */
+        _computeFitness(track) {
+          const cp = track.checkpoints[this.nextCheckpoint];
+          const distToCp = Math.hypot(cp.cx - this.x, cp.cy - this.y);
+          const progress = clamp(1.0 - distToCp / this.initialDistToNextCp, 0, 1);
+
+          this.fitness =
+            this.checkpointsPassed * 120 +
+            progress * 95 +
+            this.laps * 600 +
+            this.distanceTraveled * 0.05;
+        }
+      }
+
+      /* =========================================================================
+       * 5. GENETIC ALGORITHM & SIMULATION ENGINE
+       * ========================================================================= */
+
+      const STORAGE_KEY = 'neurodrive_ai_saved_brain_v1';
+
+      class NeuroDriveApp {
+        constructor() {
+          // Canvases
+          this.simCanvas = document.getElementById('simCanvas');
+          this.simCtx = this.simCanvas.getContext('2d');
+          this.brainCanvas = document.getElementById('brainCanvas');
+          this.brainCtx = this.brainCanvas.getContext('2d');
+          this.chartCanvas = document.getElementById('chartCanvas');
+          this.chartCtx = this.chartCanvas.getContext('2d');
+
+          // Simulation parameters
+          this.trackIndex = 0;
+          this.track = new RaceTrack(TRACK_PRESETS[this.trackIndex]);
+          this.populationSize = 100;
+          this.mutationRate = 0.10;
+          this.simSpeed = 1;
+          this.showRays = true;
+          this.showCheckpoints = true;
+          this.paused = false;
+
+          // Evolution state
+          this.generation = 1;
+          this.cars = [];
+          this.leaderCar = null;
+          this.allTimeBestFitness = 0;
+          this.allTimeBestBrain = null;
+          this.history = []; // { gen, best, avg }
+          this.genFrames = 0;
+          this.maxGenFrames = 60 * 50; // 50s of sim time max per generation
+
+          // Viewport transform (world -> screen)
+          this.view = { scale: 1, offsetX: 0, offsetY: 0, dpr: 1, width: 800, height: 600 };
+
+          // FPS metering
+          this.fpsFrames = 0;
+          this.fpsLastTime = performance.now();
+          this.currentFps = 60;
+
+          // Bind UI and initialize
+          this._bindUI();
+          this._handleResize();
+          window.addEventListener('resize', () => this._handleResize());
+
+          this._spawnInitialPopulation();
+          this._updateTrackButtonsUI();
+          this._updateSpeedButtonsUI();
+          this._renderChart();
+        }
+
+        /**
+         * Creates Generation 1 with random neural networks (or seeded from a loaded brain).
+         */
+        _spawnInitialPopulation(seedBrain = null) {
+          this.cars = [];
+          this.genFrames = 0;
+
+          for (let i = 0; i < this.populationSize; i++) {
+            let brain;
+            let isElite = false;
+            if (seedBrain) {
+              if (i === 0) {
+                brain = seedBrain.clone();
+                isElite = true;
+              } else {
+                brain = seedBrain.clone();
+                brain.mutate(this.mutationRate, i < this.populationSize * 0.4 ? 0.2 : 0.45);
+              }
+            } else {
+              brain = new NeuralNetwork([7, 8, 6, 4]);
+            }
+            const car = new Car(this.track.spawn, brain, isElite);
+            car.initForTrack(this.track);
+            this.cars.push(car);
+          }
+
+          this.leaderCar = this.cars[0];
+        }
+
+        /**
+         * Evaluates the completed generation, records telemetry, preserves elites,
+         * and breeds the next generation via tournament selection, crossover, & Gaussian mutation.
+         */
+        nextGeneration() {
+          if (this.cars.length === 0) return;
+
+          // Sort descending by fitness
+          const sorted = [...this.cars].sort((a, b) => b.fitness - a.fitness);
+          const bestCar = sorted[0];
+
+          let totalFitness = 0;
+          for (let i = 0; i < sorted.length; i++) {
+            totalFitness += sorted[i].fitness;
+          }
+          const avgFitness = totalFitness / sorted.length;
+
+          // Record history for chart
+          this.history.push({
+            gen: this.generation,
+            best: bestCar.fitness,
+            avg: avgFitness,
+          });
+          if (this.history.length > 120) {
+            this.history.shift();
+          }
+
+          // Update all-time hall-of-fame brain
+          if (bestCar.fitness > this.allTimeBestFitness || !this.allTimeBestBrain) {
+            this.allTimeBestFitness = bestCar.fitness;
+            this.allTimeBestBrain = bestCar.brain.clone();
+          }
+
+          // Breed next population
+          const nextCars = [];
+          const eliteCount = Math.max(2, Math.floor(this.populationSize * 0.05));
+
+          // 1. Preserve top elite brains completely intact
+          for (let i = 0; i < eliteCount && nextCars.length < this.populationSize; i++) {
+            const sourceBrain = (i === 0 && this.allTimeBestBrain && this.allTimeBestFitness > bestCar.fitness)
+              ? this.allTimeBestBrain.clone()
+              : sorted[i % sorted.length].brain.clone();
+            const car = new Car(this.track.spawn, sourceBrain, true);
+            car.initForTrack(this.track);
+            nextCars.push(car);
+          }
+
+          // 2. Fine-tuned mutated clones of top elites (~15%)
+          const fineTuneTarget = Math.min(this.populationSize, eliteCount + Math.floor(this.populationSize * 0.15));
+          while (nextCars.length < fineTuneTarget) {
+            const eliteIdx = Math.floor(Math.random() * Math.min(eliteCount, sorted.length));
+            const childBrain = sorted[eliteIdx].brain.clone();
+            childBrain.mutate(this.mutationRate, 0.22);
+            const car = new Car(this.track.spawn, childBrain, false);
+            car.initForTrack(this.track);
+            nextCars.push(car);
+          }
+
+          // 3. Tournament selection + Crossover + Gaussian Mutation (~72%)
+          const breedTarget = Math.floor(this.populationSize * 0.92);
+          while (nextCars.length < breedTarget) {
+            const parentA = this._tournamentSelect(sorted, 4);
+            const parentB = this._tournamentSelect(sorted, 4);
+            const childBrain = NeuralNetwork.crossover(parentA.brain, parentB.brain);
+            childBrain.mutate(this.mutationRate, 0.36);
+            const car = new Car(this.track.spawn, childBrain, false);
+            car.initForTrack(this.track);
+            nextCars.push(car);
+          }
+
+          // 4. Diversity injection (~8%): heavily mutated or fresh random brains to escape local minima
+          while (nextCars.length < this.populationSize) {
+            let brain;
+            if (Math.random() < 0.5 && this.allTimeBestBrain) {
+              brain = this.allTimeBestBrain.clone();
+              brain.mutate(Math.min(0.6, this.mutationRate * 2.5), 0.65);
+            } else {
+              brain = new NeuralNetwork([7, 8, 6, 4]);
+            }
+            const car = new Car(this.track.spawn, brain, false);
+            car.initForTrack(this.track);
+            nextCars.push(car);
+          }
+
+          this.cars = nextCars;
+          this.leaderCar = this.cars[0];
+          this.generation++;
+          this.genFrames = 0;
+
+          this._renderChart();
+        }
+
+        /**
+         * Selects the fittest individual among k random contenders.
+         */
+        _tournamentSelect(sortedPop, k = 4) {
+          let best = sortedPop[Math.floor(Math.random() * sortedPop.length)];
+          for (let i = 1; i < k; i++) {
+            const contender = sortedPop[Math.floor(Math.random() * sortedPop.length)];
+            if (contender.fitness > best.fitness) {
+              best = contender;
+            }
+          }
+          return best;
+        }
+
+        /**
+         * Resets evolution completely back to Generation 1.
+         */
+        resetEvolution(seedBrain = null) {
+          this.generation = 1;
+          this.history = [];
+          this.allTimeBestFitness = 0;
+          this.allTimeBestBrain = seedBrain ? seedBrain.clone() : null;
+          this._spawnInitialPopulation(seedBrain);
+          this._renderChart();
+        }
+
+        /**
+         * Switches to a new race circuit and resets the training run.
+         */
+        selectTrack(index) {
+          if (index < 0 || index >= TRACK_PRESETS.length) return;
+          this.trackIndex = index;
+          this.track = new RaceTrack(TRACK_PRESETS[index]);
+          this._computeTrackViewport();
+          this.resetEvolution();
+          this._updateTrackButtonsUI();
+          document.getElementById('hudTrackName').textContent = this.track.name;
+          showToast(`Loaded circuit: ${this.track.name}`, 'info');
+        }
+
+        /**
+         * Fixed-timestep physics tick (executed 1x, 2x, 5x, or 10x per frame).
+         */
+        _stepPhysics() {
+          this.genFrames++;
+          let aliveCount = 0;
+          let bestAlive = null;
+          let bestOverall = this.cars[0];
+
+          for (let i = 0; i < this.cars.length; i++) {
+            const car = this.cars[i];
+            car.update(this.track);
+
+            if (car.fitness > bestOverall.fitness) {
+              bestOverall = car;
+            }
+            if (car.alive) {
+              aliveCount++;
+              if (!bestAlive || car.fitness > bestAlive.fitness) {
+                bestAlive = car;
+              }
+            }
+          }
+
+          this.leaderCar = bestAlive || bestOverall;
+          if (bestOverall.fitness > this.allTimeBestFitness) {
+            this.allTimeBestFitness = bestOverall.fitness;
+            this.allTimeBestBrain = bestOverall.brain.clone();
+          }
+
+          // Auto-advance generation if all cars crashed or generation timed out
+          if (aliveCount === 0 || this.genFrames >= this.maxGenFrames) {
+            this.nextGeneration();
+          }
+        }
+
+        /**
+         * Main requestAnimationFrame loop.
+         */
+        start() {
+          const loop = (now) => {
+            try {
+              // FPS calculation
+              this.fpsFrames++;
+              if (now - this.fpsLastTime >= 500) {
+                this.currentFps = Math.round((this.fpsFrames * 1000) / (now - this.fpsLastTime));
+                this.fpsFrames = 0;
+                this.fpsLastTime = now;
+                const fpsEl = document.getElementById('hudFps');
+                if (fpsEl) fpsEl.textContent = `${this.currentFps} FPS`;
+              }
+
+              // Run multiple fixed-step physics updates for Turbo Training (1x..10x)
+              if (!this.paused) {
+                for (let s = 0; s < this.simSpeed; s++) {
+                  this._stepPhysics();
+                }
+              }
+
+              // Render canvases and HUD
+              this._renderSimulation();
+              this._renderBrain();
+              this._updateHUD();
+            } catch (err) {
+              console.error('NeuroDrive loop error:', err);
+            }
+            requestAnimationFrame(loop);
+          };
+          requestAnimationFrame(loop);
+        }
+
+        /* =====================================================================
+         * 6. RENDERING: SIMULATION CANVAS, BRAIN VISUALIZER & FITNESS CHART
+         * ===================================================================== */
+
+        _handleResize() {
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+          // Main Simulation Canvas
+          const simRect = this.simCanvas.parentElement.getBoundingClientRect();
+          this.simCanvas.width = Math.max(1, Math.floor(simRect.width * dpr));
+          this.simCanvas.height = Math.max(1, Math.floor(simRect.height * dpr));
+          this.view.dpr = dpr;
+          this.view.width = simRect.width;
+          this.view.height = simRect.height;
+          this._computeTrackViewport();
+
+          // Brain Visualizer Canvas
+          const brainRect = this.brainCanvas.parentElement.getBoundingClientRect();
+          this.brainCanvas.width = Math.max(1, Math.floor(brainRect.width * dpr));
+          this.brainCanvas.height = Math.max(1, Math.floor(brainRect.height * dpr));
+
+          // Fitness Chart Canvas
+          const chartRect = this.chartCanvas.parentElement.getBoundingClientRect();
+          this.chartCanvas.width = Math.max(1, Math.floor(chartRect.width * dpr));
+          this.chartCanvas.height = Math.max(1, Math.floor(chartRect.height * dpr));
+
+          this._renderChart();
+        }
+
+        /**
+         * Automatically scales and centers the active track to fit the viewport cleanly.
+         */
+        _computeTrackViewport() {
+          const b = this.track.bounds;
+          const trackW = (b.maxX - b.minX) || 1;
+          const trackH = (b.maxY - b.minY) || 1;
+
+          const padX = Math.max(36, this.view.width * 0.06);
+          const padTop = Math.max(76, this.view.height * 0.11);
+          const padBottom = Math.max(58, this.view.height * 0.09);
+
+          const availW = Math.max(100, this.view.width - padX * 2);
+          const availH = Math.max(100, this.view.height - padTop - padBottom);
+
+          const scale = Math.min(availW / trackW, availH / trackH);
+          const cx = (b.minX + b.maxX) * 0.5;
+          const cy = (b.minY + b.maxY) * 0.5;
+
+          this.view.scale = scale;
+          this.view.offsetX = this.view.width * 0.5 - cx * scale;
+          this.view.offsetY = padTop + availH * 0.5 - cy * scale;
+        }
+
+        /**
+         * Renders the cyber grid, glowing neon track, checkpoints, ghost cars,
+         * and the glowing cyan leader car with live LiDAR rays.
+         */
+        _renderSimulation() {
+          const ctx = this.simCtx;
+          const { dpr, width, height, scale, offsetX, offsetY } = this.view;
+
+          ctx.save();
+          ctx.scale(dpr, dpr);
+
+          // 1. Dark cyber background
+          ctx.fillStyle = '#060a13';
+          ctx.fillRect(0, 0, width, height);
+
+          // 2. Subtle dark cyber grid
+          const gridStep = 40;
+          ctx.strokeStyle = 'rgba(30, 41, 59, 0.32)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (let x = (offsetX % gridStep); x < width; x += gridStep) {
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+          }
+          for (let y = (offsetY % gridStep); y < height; y += gridStep) {
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+          }
+          ctx.stroke();
+
+          // Apply world-space transform
+          ctx.translate(offsetX, offsetY);
+          ctx.scale(scale, scale);
+
+          // 3. Asphalt Track Surface (evenodd fill between outer and inner polygons)
+          const outer = this.track.outerPoints;
+          const inner = this.track.innerPoints;
+
+          ctx.beginPath();
+          ctx.moveTo(outer[0].x, outer[0].y);
+          for (let i = 1; i < outer.length; i++) ctx.lineTo(outer[i].x, outer[i].y);
+          ctx.closePath();
+
+          ctx.moveTo(inner[0].x, inner[0].y);
+          for (let i = 1; i < inner.length; i++) ctx.lineTo(inner[i].x, inner[i].y);
+          ctx.closePath();
+
+          ctx.fillStyle = '#0f172a';
+          ctx.fill('evenodd');
+
+          // Subtle dashed centerline racing guide
+          const cl = this.track.centerline;
+          ctx.beginPath();
+          ctx.moveTo(cl[0].x, cl[0].y);
+          for (let i = 1; i < cl.length; i++) ctx.lineTo(cl[i].x, cl[i].y);
+          ctx.closePath();
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([12, 14]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // 4. Optional subtle checkpoint gates
+          if (this.showCheckpoints) {
+            const cps = this.track.checkpoints;
+            const leaderNextCp = this.leaderCar ? this.leaderCar.nextCheckpoint : -1;
+
+            for (let i = 1; i < cps.length; i++) {
+              const cp = cps[i];
+              ctx.beginPath();
+              ctx.moveTo(cp.x1, cp.y1);
+              ctx.lineTo(cp.x2, cp.y2);
+              if (i === leaderNextCp) {
+                ctx.strokeStyle = 'rgba(34, 211, 238, 0.45)';
+                ctx.lineWidth = 2.5;
+              } else {
+                ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+                ctx.lineWidth = 1.2;
+              }
+              ctx.stroke();
+            }
+          }
+
+          // 5. Start / Finish Checkered Line (at checkpoint 0)
+          this._drawStartFinishLine(ctx, this.track.checkpoints[0]);
+
+          // 6. Glowing Neon Track Walls (Outer & Inner)
+          const drawWallLoop = (pts) => {
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+            ctx.closePath();
+          };
+
+          // Outer glow pass
+          ctx.save();
+          ctx.shadowColor = 'rgba(34, 211, 238, 0.75)';
+          ctx.shadowBlur = 14;
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+          ctx.lineWidth = 4.5;
+          drawWallLoop(outer);
+          ctx.stroke();
+          drawWallLoop(inner);
+          ctx.stroke();
+          ctx.restore();
+
+          // Crisp bright neon core stroke
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 2.2;
+          drawWallLoop(outer);
+          ctx.stroke();
+          drawWallLoop(inner);
+          ctx.stroke();
+
+          // 7. Render Crashed Cars (fading out cleanly) & Alive Ghost Cars
+          for (let i = 0; i < this.cars.length; i++) {
+            const car = this.cars[i];
+            if (car === this.leaderCar) continue;
+
+            if (!car.alive) {
+              if (car.crashFade > 0.02) {
+                this._drawCar(ctx, car, `rgba(244, 63, 94, ${car.crashFade * 0.28})`, `rgba(244, 63, 94, ${car.crashFade * 0.55})`, false);
+              }
+            } else {
+              const fill = car.isElite ? 'rgba(16, 185, 129, 0.38)' : 'rgba(129, 140, 248, 0.24)';
+              const stroke = car.isElite ? 'rgba(52, 211, 153, 0.72)' : 'rgba(165, 180, 252, 0.52)';
+              this._drawCar(ctx, car, fill, stroke, false);
+            }
+          }
+
+          // 8. Render Leading Car + Live LiDAR Laser Rays
+          if (this.leaderCar) {
+            if (this.showRays && this.leaderCar.alive) {
+              this._drawLidarRays(ctx, this.leaderCar);
+            }
+            this._drawCar(ctx, this.leaderCar, '#22d3ee', '#cffafe', true);
+          }
+
+          ctx.restore();
+        }
+
+        /**
+         * Draws a crisp checkered start/finish banner across checkpoint 0.
+         */
+        _drawStartFinishLine(ctx, cp) {
+          if (!cp) return;
+          const dx = cp.x2 - cp.x1;
+          const dy = cp.y2 - cp.y1;
+          const len = Math.hypot(dx, dy) || 1;
+          const ux = dx / len;
+          const uy = dy / len;
+          const nx = -uy;
+          const ny = ux;
+
+          const squares = 10;
+          const sqLen = len / squares;
+          const sqDepth = 6;
+
+          ctx.save();
+          for (let r = 0; r < 2; r++) {
+            for (let i = 0; i < squares; i++) {
+              const isWhite = (i + r) % 2 === 0;
+              ctx.fillStyle = isWhite ? 'rgba(248, 250, 252, 0.85)' : 'rgba(15, 23, 42, 0.9)';
+              const sx = cp.x1 + ux * (i * sqLen) + nx * ((r - 1) * sqDepth);
+              const sy = cp.y1 + uy * (i * sqLen) + ny * ((r - 1) * sqDepth);
+
+              ctx.beginPath();
+              ctx.moveTo(sx, sy);
+              ctx.lineTo(sx + ux * sqLen, sy + uy * sqLen);
+              ctx.lineTo(sx + ux * sqLen + nx * sqDepth, sy + uy * sqLen + ny * sqDepth);
+              ctx.lineTo(sx + nx * sqDepth, sy + ny * sqDepth);
+              ctx.closePath();
+              ctx.fill();
+            }
+          }
+          ctx.restore();
+        }
+
+        /**
+         * Draws a stylized top-down cyber race car.
+         */
+        _drawCar(ctx, car, fillColor, strokeColor, isLeader) {
+          ctx.save();
+          ctx.translate(car.x, car.y);
+          ctx.rotate(car.angle);
+
+          if (isLeader) {
+            ctx.shadowColor = '#22d3ee';
+            ctx.shadowBlur = 18;
+          }
+
+          const hl = CAR_LENGTH * 0.5;
+          const hw = CAR_WIDTH * 0.5;
+
+          // Car chassis with rounded nose
+          ctx.beginPath();
+          ctx.roundRect(-hl, -hw, CAR_LENGTH, CAR_WIDTH, 3.5);
+          ctx.fillStyle = fillColor;
+          ctx.fill();
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = isLeader ? 1.8 : 1.1;
+          ctx.stroke();
+
+          if (isLeader) {
+            ctx.shadowBlur = 0;
+            // Windshield cockpit
+            ctx.fillStyle = '#082f49';
+            ctx.beginPath();
+            ctx.roundRect(-3, -hw + 2.2, 9, CAR_WIDTH - 4.4, 2);
+            ctx.fill();
+
+            // Glowing headlights
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(hl - 2.5, -hw + 1.5, 2.5, 2.6);
+            ctx.fillRect(hl - 2.5, hw - 4.1, 2.5, 2.6);
+
+            // Brake lights (bright red when braking)
+            ctx.fillStyle = car.braking ? '#f43f5e' : 'rgba(244, 63, 94, 0.35)';
+            ctx.fillRect(-hl, -hw + 1.5, 2.2, 2.8);
+            ctx.fillRect(-hl, hw - 4.3, 2.2, 2.8);
+          }
+
+          ctx.restore();
+        }
+
+        /**
+         * Renders the 7 live LiDAR laser rays for the leading car:
+         * Green = clear path, Red = wall hit with glowing intersection dot.
+         */
+        _drawLidarRays(ctx, car) {
+          ctx.save();
+          for (let i = 0; i < car.rays.length; i++) {
+            const ray = car.rays[i];
+            ctx.beginPath();
+            ctx.moveTo(ray.x1, ray.y1);
+            ctx.lineTo(ray.x2, ray.y2);
+
+            if (ray.hit) {
+              ctx.strokeStyle = 'rgba(244, 63, 94, 0.78)';
+              ctx.lineWidth = 1.6;
+              ctx.stroke();
+
+              // Glowing wall-hit marker dot
+              ctx.beginPath();
+              ctx.arc(ray.x2, ray.y2, 3.8, 0, Math.PI * 2);
+              ctx.fillStyle = '#f43f5e';
+              ctx.shadowColor = '#f43f5e';
+              ctx.shadowBlur = 8;
+              ctx.fill();
+              ctx.shadowBlur = 0;
+            } else {
+              ctx.strokeStyle = 'rgba(16, 185, 129, 0.55)';
+              ctx.lineWidth = 1.4;
+              ctx.stroke();
+            }
+          }
+          ctx.restore();
+        }
+
+        /**
+         * Renders the real-time Neural Network Brain Visualizer (7 -> 8 -> 6 -> 4)
+         * showing pulsing positive (emerald) / negative (crimson) weighted synapses
+         * and live node activations.
+         */
+        _renderBrain() {
+          const ctx = this.brainCtx;
+          const dpr = this.view.dpr;
+          const w = this.brainCanvas.width / dpr;
+          const h = this.brainCanvas.height / dpr;
+
+          ctx.save();
+          ctx.scale(dpr, dpr);
+          ctx.clearRect(0, 0, w, h);
+
+          const car = this.leaderCar;
+          if (!car || !car.brain) {
+            ctx.restore();
+            return;
+          }
+
+          const nn = car.brain;
+          const layers = nn.layerSizes;
+          const numLayers = layers.length;
+
+          const padLeft = 34;
+          const padRight = 38;
+          const padY = 16;
+          const layerSpacing = (w - padLeft - padRight) / (numLayers - 1);
+
+          // Precompute node positions
+          const positions = [];
+          for (let l = 0; l < numLayers; l++) {
+            const count = layers[l];
+            const x = padLeft + l * layerSpacing;
+            const usableH = h - padY * 2;
+            const stepY = count > 1 ? usableH / (count - 1) : 0;
+            const col = [];
+            for (let i = 0; i < count; i++) {
+              const y = count > 1 ? padY + i * stepY : h * 0.5;
+              col.push({ x, y });
+            }
+            positions.push(col);
+          }
+
+          // 1. Draw weighted synapses
+          for (let l = 0; l < numLayers - 1; l++) {
+            const wMat = nn.weights[l];
+            const prevAct = nn.activations[l];
+
+            for (let o = 0; o < layers[l + 1]; o++) {
+              const toPos = positions[l + 1][o];
+              const row = wMat[o];
+
+              for (let i = 0; i < layers[l]; i++) {
+                const weight = row[i];
+                const absW = Math.abs(weight);
+                if (absW < 0.08) continue;
+
+                const fromPos = positions[l][i];
+                const signal = Math.abs(prevAct[i] * weight);
+                const alpha = clamp(0.10 + absW * 0.22 + signal * 0.42, 0.08, 0.92);
+                const lineW = clamp(0.45 + absW * 0.9 + signal * 0.65, 0.5, 2.6);
+
+                ctx.beginPath();
+                ctx.moveTo(fromPos.x, fromPos.y);
+                ctx.lineTo(toPos.x, toPos.y);
+                ctx.strokeStyle = weight >= 0
+                  ? `rgba(16, 185, 129, ${alpha.toFixed(2)})`
+                  : `rgba(244, 63, 94, ${alpha.toFixed(2)})`;
+                ctx.lineWidth = lineW;
+                ctx.stroke();
+              }
+            }
+          }
+
+          // 2. Draw neurons + labels
+          const inputLabels = ['L75', 'L50', 'L25', 'FWD', 'R25', 'R50', 'R75'];
+          const outputLabels = ['GAS', 'BRK', 'LFT', 'RGT'];
+
+          ctx.font = '600 9px "JetBrains Mono", monospace';
+          ctx.textBaseline = 'middle';
+
+          for (let l = 0; l < numLayers; l++) {
+            const acts = nn.activations[l];
+            const isInput = (l === 0);
+            const isOutput = (l === numLayers - 1);
+            const radius = isOutput ? 7.5 : (isInput ? 5.5 : 6);
+
+            for (let i = 0; i < layers[l]; i++) {
+              const pos = positions[l][i];
+              const act = acts[i];
+              // Map activation brightness: input/output in [0,1], hidden in [-1,1]
+              const intensity = (isInput || isOutput) ? clamp(act, 0, 1) : clamp((act + 1) * 0.5, 0, 1);
+
+              // Outer ring & glow for firing outputs
+              ctx.beginPath();
+              ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+
+              if (isOutput && act > 0.5) {
+                ctx.shadowColor = '#22d3ee';
+                ctx.shadowBlur = 10;
+              } else {
+                ctx.shadowBlur = 0;
+              }
+
+              // Node fill brightness reflects live activation
+              if (isOutput) {
+                ctx.fillStyle = `rgba(34, 211, 238, ${(0.12 + intensity * 0.88).toFixed(2)})`;
+                ctx.strokeStyle = act > 0.5 ? '#67e8f9' : '#334155';
+              } else if (isInput) {
+                // Redder when close to wall, emerald/cyan when clear
+                const r = Math.round(244 * (1 - intensity) + 16 * intensity);
+                const g = Math.round(63 * (1 - intensity) + 185 * intensity);
+                const b = Math.round(94 * (1 - intensity) + 129 * intensity);
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                ctx.strokeStyle = '#1e293b';
+              } else {
+                // Hidden layer tanh: emerald for positive, crimson for negative
+                const mag = Math.min(1, Math.abs(act));
+                ctx.fillStyle = act >= 0
+                  ? `rgba(56, 189, 248, ${(0.14 + mag * 0.86).toFixed(2)})`
+                  : `rgba(244, 63, 94, ${(0.14 + mag * 0.86).toFixed(2)})`;
+                ctx.strokeStyle = '#334155';
+              }
+
+              ctx.fill();
+              ctx.lineWidth = 1.4;
+              ctx.stroke();
+              ctx.shadowBlur = 0;
+
+              // Labels
+              if (isInput) {
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillText(inputLabels[i], pos.x - 10, pos.y);
+              } else if (isOutput) {
+                ctx.textAlign = 'left';
+                ctx.fillStyle = act > 0.5 ? '#22d3ee' : '#64748b';
+                ctx.fillText(outputLabels[i], pos.x + 11, pos.y);
+              }
+            }
+          }
+
+          ctx.restore();
+        }
+
+        /**
+         * Renders the dark-mode Fitness Evolution line graph (Best vs Average across generations).
+         */
+        _renderChart() {
+          const ctx = this.chartCtx;
+          const dpr = this.view.dpr;
+          const w = this.chartCanvas.width / dpr;
+          const h = this.chartCanvas.height / dpr;
+
+          ctx.save();
+          ctx.scale(dpr, dpr);
+          ctx.clearRect(0, 0, w, h);
+
+          const padL = 38;
+          const padR = 12;
+          const padT = 14;
+          const padB = 22;
+          const plotW = Math.max(10, w - padL - padR);
+          const plotH = Math.max(10, h - padT - padB);
+
+          // Determine Y-axis ceiling
+          let maxVal = 200;
+          for (let i = 0; i < this.history.length; i++) {
+            if (this.history[i].best > maxVal) maxVal = this.history[i].best;
+          }
+          maxVal = Math.ceil(maxVal / 100) * 100;
+
+          // Grid lines & Y-axis labels
+          ctx.font = '500 9px "JetBrains Mono", monospace';
+          ctx.textBaseline = 'middle';
+          ctx.textAlign = 'right';
+
+          const gridRows = 4;
+          for (let r = 0; r <= gridRows; r++) {
+            const frac = r / gridRows;
+            const y = padT + plotH * (1 - frac);
+            const val = Math.round(maxVal * frac);
+
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.45)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padL, y);
+            ctx.lineTo(w - padR, y);
+            ctx.stroke();
+
+            ctx.fillStyle = '#64748b';
+            const label = val >= 1000 ? `${(val / 1000).toFixed(1)}k` : `${val}`;
+            ctx.fillText(label, padL - 6, y);
+          }
+
+          // Placeholder text before Gen 1 finishes
+          if (this.history.length === 0) {
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#64748b';
+            ctx.font = '500 11px Inter, sans-serif';
+            ctx.fillText('Completing Generation 1...', padL + plotW * 0.5, padT + plotH * 0.5);
+            ctx.restore();
+            return;
+          }
+
+          const count = this.history.length;
+          const getX = (idx) => count === 1 ? padL + plotW * 0.5 : padL + (idx / (count - 1)) * plotW;
+          const getY = (val) => padT + plotH * (1 - clamp(val / maxVal, 0, 1));
+
+          // Cyan gradient fill under Best Fitness curve
+          if (count > 1) {
+            ctx.beginPath();
+            ctx.moveTo(getX(0), padT + plotH);
+            for (let i = 0; i < count; i++) {
+              ctx.lineTo(getX(i), getY(this.history[i].best));
+            }
+            ctx.lineTo(getX(count - 1), padT + plotH);
+            ctx.closePath();
+
+            const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+            grad.addColorStop(0, 'rgba(34, 211, 238, 0.28)');
+            grad.addColorStop(1, 'rgba(34, 211, 238, 0.0)');
+            ctx.fillStyle = grad;
+            ctx.fill();
+          }
+
+          // Average Fitness Line (Amber)
+          ctx.beginPath();
+          for (let i = 0; i < count; i++) {
+            const x = getX(i), y = getY(this.history[i].avg);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 1.8;
+          ctx.stroke();
+
+          // Best Fitness Line (Cyan)
+          ctx.beginPath();
+          for (let i = 0; i < count; i++) {
+            const x = getX(i), y = getY(this.history[i].best);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.strokeStyle = '#22d3ee';
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+
+          // Latest points dots
+          const lastIdx = count - 1;
+          ctx.beginPath();
+          ctx.arc(getX(lastIdx), getY(this.history[lastIdx].best), 3.2, 0, Math.PI * 2);
+          ctx.fillStyle = '#22d3ee';
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(getX(lastIdx), getY(this.history[lastIdx].avg), 2.8, 0, Math.PI * 2);
+          ctx.fillStyle = '#f59e0b';
+          ctx.fill();
+
+          // X-axis generation labels
+          ctx.fillStyle = '#64748b';
+          ctx.textAlign = 'left';
+          ctx.fillText(`G${this.history[0].gen}`, padL, h - 8);
+          ctx.textAlign = 'right';
+          ctx.fillText(`G${this.history[lastIdx].gen}`, w - padR, h - 8);
+
+          ctx.restore();
+        }
+
+        /**
+         * Updates the floating HUD telemetry numbers smoothly.
+         */
+        _updateHUD() {
+          let aliveCount = 0;
+          for (let i = 0; i < this.cars.length; i++) {
+            if (this.cars[i].alive) aliveCount++;
+          }
+
+          const leader = this.leaderCar;
+          const totalCps = this.track.checkpoints.length;
+
+          document.getElementById('hudGen').textContent = this.generation;
+          document.getElementById('hudAlive').innerHTML = `${aliveCount}<span class="text-xs text-slate-400 font-normal">/${this.cars.length}</span>`;
+          document.getElementById('hudBestFitness').textContent = leader ? Math.round(leader.fitness) : 0;
+          document.getElementById('hudAllTimeBest').textContent = Math.round(this.allTimeBestFitness);
+
+          if (leader) {
+            const cpInLap = leader.checkpointsPassed % totalCps;
+            document.getElementById('hudLapCp').innerHTML =
+              `Lap ${leader.laps + 1} <span class="text-slate-500">•</span> CP ${cpInLap}/${totalCps}`;
+            document.getElementById('hudSpeed').textContent = (leader.speed * 34).toFixed(0) + ' km/h';
+          }
+          document.getElementById('hudGenTimer').textContent = (this.genFrames / 60).toFixed(1) + 's';
+        }
+
+        /* =====================================================================
+         * 7. UI EVENT BINDINGS & BRAIN PERSISTENCE (localStorage + JSON File)
+         * ===================================================================== */
+
+        _bindUI() {
+          // Track Selector buttons
+          document.querySelectorAll('.track-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const idx = parseInt(btn.dataset.track, 10);
+              this.selectTrack(idx);
+            });
+          });
+
+          // Speed Multiplier buttons (1x, 2x, 5x, 10x)
+          document.querySelectorAll('.speed-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              this.simSpeed = parseInt(btn.dataset.speed, 10);
+              this._updateSpeedButtonsUI();
+            });
+          });
+
+          // Pause / Resume toggle
+          const btnPause = document.getElementById('btnPause');
+          btnPause.addEventListener('click', () => {
+            this.paused = !this.paused;
+            const dot = document.getElementById('pauseDot');
+            const label = document.getElementById('pauseLabel');
+            if (this.paused) {
+              dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+              label.textContent = 'Paused';
+            } else {
+              dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+              label.textContent = 'Running';
+            }
+          });
+
+          // Population Size slider (30 - 200)
+          const sliderPop = document.getElementById('sliderPop');
+          const valPop = document.getElementById('valPop');
+          sliderPop.addEventListener('input', () => {
+            this.populationSize = parseInt(sliderPop.value, 10);
+            valPop.textContent = `${this.populationSize} cars`;
+          });
+          sliderPop.addEventListener('change', () => {
+            showToast(`Population set to ${this.populationSize} (applies next generation)`, 'info');
+          });
+
+          // Mutation Rate slider (1% - 40%)
+          const sliderMut = document.getElementById('sliderMut');
+          const valMut = document.getElementById('valMut');
+          sliderMut.addEventListener('input', () => {
+            const pct = parseInt(sliderMut.value, 10);
+            this.mutationRate = pct / 100;
+            valMut.textContent = `${pct}%`;
+          });
+
+          // Toggle Raycasts & Checkpoints
+          document.getElementById('toggleRays').addEventListener('change', (e) => {
+            this.showRays = e.target.checked;
+          });
+          document.getElementById('toggleCheckpoints').addEventListener('change', (e) => {
+            this.showCheckpoints = e.target.checked;
+          });
+
+          // Next Generation & Reset Evolution
+          document.getElementById('btnNextGen').addEventListener('click', () => {
+            this.nextGeneration();
+            showToast(`Advanced to Generation ${this.generation}`, 'info');
+          });
+          document.getElementById('btnReset').addEventListener('click', () => {
+            this.resetEvolution();
+            showToast('Evolution reset to Generation 1', 'warning');
+          });
+
+          // Quick Save to localStorage
+          document.getElementById('btnQuickSave').addEventListener('click', () => {
+            try {
+              const bestBrain = this._getBestAvailableBrain();
+              const payload = {
+                ...bestBrain.toJSON(),
+                trackName: this.track.name,
+                generation: this.generation,
+                fitness: Math.round(this.allTimeBestFitness),
+                savedAt: new Date().toISOString(),
+              };
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+              showToast(`Saved best brain (Fitness ${payload.fitness}) to browser storage`, 'success');
+            } catch (err) {
+              showToast(`Failed to save brain: ${err.message}`, 'error');
+            }
+          });
+
+          // Quick Load from localStorage
+          document.getElementById('btnQuickLoad').addEventListener('click', () => {
+            try {
+              const raw = localStorage.getItem(STORAGE_KEY);
+              if (!raw) {
+                showToast('No saved brain found in browser storage.', 'warning');
+                return;
+              }
+              const parsed = JSON.parse(raw);
+              const loadedBrain = NeuralNetwork.fromJSON(parsed);
+              this.resetEvolution(loadedBrain);
+              showToast(`Loaded saved brain (Fitness ${parsed.fitness || '?'}) & seeded population!`, 'success');
+            } catch (err) {
+              showToast(`Failed to load brain: ${err.message}`, 'error');
+            }
+          });
+
+          // Export Best Brain as JSON file
+          document.getElementById('btnExportJson').addEventListener('click', () => {
+            try {
+              const bestBrain = this._getBestAvailableBrain();
+              const payload = {
+                ...bestBrain.toJSON(),
+                trackName: this.track.name,
+                generation: this.generation,
+                fitness: Math.round(this.allTimeBestFitness),
+                exportedAt: new Date().toISOString(),
+              };
+              const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `neurodrive-brain-gen${this.generation}-fit${payload.fitness}.json`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+              showToast('Exported best neural network brain as JSON!', 'success');
+            } catch (err) {
+              showToast(`Export error: ${err.message}`, 'error');
+            }
+          });
+
+          // Import Brain from JSON file
+          const fileInput = document.getElementById('fileImportJson');
+          document.getElementById('btnImportJson').addEventListener('click', () => {
+            fileInput.value = '';
+            fileInput.click();
+          });
+          fileInput.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              try {
+                const parsed = JSON.parse(String(reader.result));
+                const loadedBrain = NeuralNetwork.fromJSON(parsed);
+                this.resetEvolution(loadedBrain);
+                showToast(`Imported "${file.name}" & seeded new population!`, 'success');
+              } catch (err) {
+                showToast(`Invalid brain JSON: ${err.message}`, 'error');
+              }
+            };
+            reader.readAsText(file);
+          });
+        }
+
+        _getBestAvailableBrain() {
+          if (this.allTimeBestBrain) return this.allTimeBestBrain;
+          if (this.leaderCar && this.leaderCar.brain) return this.leaderCar.brain;
+          return new NeuralNetwork([7, 8, 6, 4]);
+        }
+
+        _updateTrackButtonsUI() {
+          document.querySelectorAll('.track-btn').forEach(btn => {
+            const idx = parseInt(btn.dataset.track, 10);
+            if (idx === this.trackIndex) {
+              btn.className = 'track-btn px-2.5 py-2 rounded-lg text-left text-xs font-semibold border transition cursor-pointer bg-cyan-500/15 border-cyan-400/70 text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.18)]';
+            } else {
+              btn.className = 'track-btn px-2.5 py-2 rounded-lg text-left text-xs font-semibold border transition cursor-pointer bg-slate-800/70 border-slate-700/70 text-slate-300 hover:bg-slate-800 hover:border-slate-600';
+            }
+          });
+        }
+
+        _updateSpeedButtonsUI() {
+          const labels = {
+            1: '1x Realtime',
+            2: '2x Fast',
+            5: '5x Turbo',
+            10: '10x Max Turbo'
+          };
+          document.getElementById('speedBadge').textContent = labels[this.simSpeed] || `${this.simSpeed}x`;
+
+          document.querySelectorAll('.speed-btn').forEach(btn => {
+            const spd = parseInt(btn.dataset.speed, 10);
+            if (spd === this.simSpeed) {
+              btn.className = 'speed-btn py-1.5 rounded-lg font-mono text-xs font-bold border transition cursor-pointer bg-cyan-500 text-slate-950 border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.35)]';
+            } else {
+              btn.className = 'speed-btn py-1.5 rounded-lg font-mono text-xs font-bold border transition cursor-pointer bg-slate-800/80 text-slate-300 border-slate-700 hover:bg-slate-700';
+            }
+          });
+        }
+      }
+
+      /* =========================================================================
+       * 8. BOOTSTRAP ON WINDOW LOAD
+       * ========================================================================= */
+      window.addEventListener('load', () => {
+        const app = new NeuroDriveApp();
+        app.start();
+      });
+    })();
+  </script>
+</body>
+</html>
