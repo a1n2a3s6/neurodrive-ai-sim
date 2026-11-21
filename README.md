@@ -24,9 +24,17 @@ A **Self-Driving Car Neural Network & Genetic Algorithm Simulator** built comple
 ## Author & Connect
 Built by **Anas Alhelaly**
 
-[[https://img.shields.io/badge/Portfolio-anas--alhelaly.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white]](https://anas-alhelaly.vercel.app/)
-[[https://img.shields.io/badge/GitHub-a1n2a3s6-181717?style=for-the-badge&logo=github&logoColor=white]](https://github.com/a1n2a3s6)
-[[https://img.shields.io/badge/Instagram-@anas.alhelaly-E4405F?style=for-the-badge&logo=instagram&logoColor=white]](https://www.instagram.com/anas.alhelaly/)
+<p>
+  <a href="https://anas-alhelaly.vercel.app/">
+    <img src="https://img.shields.io/badge/Portfolio-anas--alhelaly.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Portfolio" />
+  </a>
+  <a href="https://github.com/a1n2a3s6">
+    <img src="https://img.shields.io/badge/GitHub-a1n2a3s6-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" />
+  </a>
+  <a href="https://www.instagram.com/anas.alhelaly/">
+    <img src="https://img.shields.io/badge/Instagram-@anas.alhelaly-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Instagram" />
+  </a>
+</p>
 
 ---
 *Part of my **365 Projects in 365 Days** GitHub challenge — Day 4.*
